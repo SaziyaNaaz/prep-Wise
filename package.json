@@ -11,6 +11,8 @@
   "dependencies": {
     "agora-rtc-sdk-ng": "^4.23.3",
     "core-js": "^3.25.3",
+    "firebase": "^11.6.1",
+    "firebase-admin": "^13.3.0",
     "nuxt": "^2.15.8",
     "vue": "^2.7.10",
     "vue-server-renderer": "^2.7.10",

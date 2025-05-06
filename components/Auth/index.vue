@@ -1,6 +1,16 @@
 <template>
   <div>
     <div class="auth-container">
+      <v-snackbar
+        v-model="snackbar"
+        :timeout="3000"
+        :color="snackbarColor"
+        top
+        centered
+      >
+        {{ snackbarText }}
+      </v-snackbar>
+
       <v-card class="card_style">
         <div class="auth-container">
           <div>
@@ -88,15 +98,27 @@
                 >Create an Account</v-btn
               >
             </v-form>
-            <div style="font-size: small; text-align: center; margin-top: 8px" v-if="signIn">
+            <div
+              style="font-size: small; text-align: center; margin-top: 8px"
+              v-if="signIn"
+            >
               Don't Have an account?
-              <span style="color: #3b3dcc; cursor: pointer; font-weight: bold" @click="toggleSignUp">
+              <span
+                style="color: #3b3dcc; cursor: pointer; font-weight: bold"
+                @click="toggleSignUp"
+              >
                 Sign Up
               </span>
             </div>
-            <div style="font-size: small; text-align: center; margin-top: 8px" v-if="!signIn">
+            <div
+              style="font-size: small; text-align: center; margin-top: 8px"
+              v-if="!signIn"
+            >
               Have an account already?
-              <span style="color: #3b3dcc; cursor: pointer; font-weight: bold" @click="toggleSignUp">
+              <span
+                style="color: #3b3dcc; cursor: pointer; font-weight: bold"
+                @click="toggleSignUp"
+              >
                 Sign In
               </span>
             </div>
@@ -107,6 +129,12 @@
   </div>
 </template>
 <script>
+import { auth, db } from "@/firebase/client";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+
 export default {
   name: "Auth",
   data() {
@@ -114,6 +142,10 @@ export default {
       signIn: true,
       email: "",
       password: "",
+      name: "",
+      snackbar: false,
+      snackbarText: "",
+      snackbarColor: "success",
       emailRules: [
         (v) => !!v || "Email is required",
         (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || "E-mail must be valid",
@@ -126,16 +158,67 @@ export default {
     };
   },
   methods: {
-    submit() {
-      if (this.$refs.form.validate()) {
-        alert("Form is valid ✅");
-      } else {
-        alert("Form has errors 🚫");
+    async submit() {
+      if (!this.$refs.form.validate()) {
+        this.showSnackbar("Please fix the errors 🚫", "error");
+        return;
+      }
+
+      try {
+        if (this.signIn) {
+          // Sign In
+          const userCredential = await signInWithEmailAndPassword(
+            auth,
+            this.email,
+            this.password
+          );
+          console.log("Signed in:", userCredential.user);
+          this.showSnackbar("Successfully signed in ✅", "success");
+          this.$router.push('home')
+        } else {
+          // Sign Up
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            // this.name,
+            this.email,
+            this.password,
+          );
+          console.log("Account created:", userCredential.user);
+          this.showSnackbar(
+            "Account created successfully! Now please sign in.",
+            "success"
+          );
+          // Switch to Sign In after successful signup
+          this.signIn = true;
+        }
+      } catch (error) {
+        console.error("Firebase error:", error.message);
+
+        // Handle specific error: user-not-found
+        if (this.signIn && error.code === "auth/user-not-found") {
+          this.showSnackbar(
+            "No account found. Please create an account 👤",
+            "warning"
+          );
+          // Switch to Sign Up form
+          this.signIn = false;
+        } else if (error.code === "auth/wrong-password") {
+          this.showSnackbar("Incorrect password 🚫", "error");
+        } else if (error.code === "auth/email-already-in-use") {
+          this.showSnackbar("This email is already registered 🚫", "error");
+        } else {
+          this.showSnackbar(error.message, "error");
+        }
       }
     },
     toggleSignUp() {
-      this.signIn = !this.signIn
-    }
+      this.signIn = !this.signIn;
+    },
+    showSnackbar(message, color = "success") {
+      this.snackbarText = message;
+      this.snackbarColor = color;
+      this.snackbar = true;
+    },
   },
 };
 </script>
